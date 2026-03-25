@@ -1,0 +1,29 @@
+# PostgreSQL для локальной разработки (Docker Desktop)
+# Запуск из корня проекта: docker compose up -d
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: coffee_stop_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: coffeestop
+      POSTGRES_PASSWORD: coffeestop
+      POSTGRES_DB: coffeestop
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Схема применится при первом создании тома (первый запуск)
+      - ./backend/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: coffee_stop_mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # Web UI
+
+volumes:
+  postgres_data:

@@ -1,0 +1,37 @@
+.env
+.env
+.env.prod
+.env.local
+.env.*.local
+.env.test
+
+backend/.env
+.DS_Store
+
+# Frontend build artifacts and deps
+frontend-guest/node_modules/
+frontend-barista/node_modules/
+**/node_modules/
+
+frontend-guest/.next/
+frontend-barista/.next/
+**/.next/
+
+# OS/editor
+.DS_Store
+*.log
+
+# Nested git dirs from earlier experiments (do not commit)
+frontend-guest/.git/
+frontend-barista/.git/
+
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/

@@ -1,0 +1,84 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: coffee_stop_db_prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: coffeestop
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env.prod}
+      POSTGRES_DB: coffeestop
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks:
+      - internal
+
+  backend:
+    image: ${COFFEE_STOP_BACKEND_IMAGE:?set COFFEE_STOP_BACKEND_IMAGE}
+    container_name: coffee_stop_backend_prod
+    restart: unless-stopped
+    env_file:
+      - .env.prod
+    depends_on:
+      - db
+    networks:
+      - internal
+
+  guest:
+    image: ${COFFEE_STOP_GUEST_IMAGE:?set COFFEE_STOP_GUEST_IMAGE}
+    container_name: coffee_stop_guest_prod
+    restart: unless-stopped
+    environment:
+      # Used only for server-side rendering fallback (browser infers api.* automatically).
+      API_INTERNAL_BASE_URL: http://backend:8000/api/v1
+    networks:
+      - internal
+
+  barista:
+    image: ${COFFEE_STOP_BARISTA_IMAGE:?set COFFEE_STOP_BARISTA_IMAGE}
+    container_name: coffee_stop_barista_prod
+    restart: unless-stopped
+    environment:
+      # Used only for server-side rendering fallback (browser infers api.* automatically).
+      API_INTERNAL_BASE_URL: http://backend:8000/api/v1
+    networks:
+      - internal
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: coffee_stop_nginx_prod
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - guest
+      - barista
+    volumes:
+      - ./deploy/nginx/conf.d:/etc/nginx/templates:ro
+      - ./deploy/certbot/www:/var/www/certbot
+      - ./deploy/certbot/conf:/etc/letsencrypt
+    environment:
+      DOMAIN: ${DOMAIN}
+    command: >
+      /bin/sh -c "envsubst '$$DOMAIN'
+      < /etc/nginx/templates/coffee-stop.conf
+      > /etc/nginx/conf.d/default.conf
+      && nginx -g 'daemon off;'"
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - internal
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: coffee_stop_certbot_prod
+    volumes:
+      - ./deploy/certbot/www:/var/www/certbot
+      - ./deploy/certbot/conf:/etc/letsencrypt
+    networks:
+      - internal
+
+volumes:
+  pg_data:
+
+networks:
+  internal:
