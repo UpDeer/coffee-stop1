@@ -25,6 +25,9 @@ frontend-barista/.next/
 frontend-guest/.git/
 frontend-barista/.git/
 
+# Secrets (never commit)
+.github/key
+
 .venv/
 venv/
 __pycache__/
