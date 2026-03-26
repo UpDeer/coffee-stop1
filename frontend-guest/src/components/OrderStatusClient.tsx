@@ -111,7 +111,7 @@ export function OrderStatusClient({ slug, orderId }: { slug: string; orderId: st
         // Polling policy to reduce load:
         // - stop when ready
         // - slow down during payment_pending
-        if (s.status === "ready" || s.status === "payment_failed") return;
+        if (s.status === "ready") return;
         if (s.status === "payment_pending") {
           scheduleNext(6000);
         } else {
