@@ -74,7 +74,7 @@ export function BaristaApp() {
 
     const scheduleNext = () => {
       if (cancelled) return;
-      timeoutId = window.setTimeout(() => void fetchAll(), delayMs);
+      timeoutId = window.setTimeout(() => void fetchAll(storeId), delayMs);
     };
 
     const tick = async () => {
