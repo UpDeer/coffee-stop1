@@ -1,12 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { useCart } from "@/lib/useCart";
 
-export function AppHeader({ slug, title }: { slug: string; title: string }) {
+export function AppHeader({
+  slug,
+  title,
+  children,
+}: {
+  slug: string;
+  title: string;
+  children?: ReactNode;
+}) {
   const cart = useCart(slug);
   const searchParams = useSearchParams();
   const qrToken = searchParams.get("t");
@@ -30,13 +38,6 @@ export function AppHeader({ slug, title }: { slug: string; title: string }) {
           >
             {title}
           </Link>
-          <Link
-            href={withQr(`/s/${encodeURIComponent(slug)}`)}
-            className="block text-xs text-zinc-500 hover:underline"
-            title="Вернуться в меню"
-          >
-            /{slug}
-          </Link>
         </div>
         <Link
           href={withQr(`/s/${encodeURIComponent(slug)}/cart`)}
@@ -50,6 +51,7 @@ export function AppHeader({ slug, title }: { slug: string; title: string }) {
           ) : null}
         </Link>
       </div>
+      {children ? <div className="mx-auto max-w-xl px-4 pb-3">{children}</div> : null}
     </header>
   );
 }

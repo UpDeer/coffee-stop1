@@ -48,6 +48,51 @@ export function StoreMenuClient({ slug, menu }: { slug: string; menu: StoreMenu 
     }));
   }, [menuState.categories]);
 
+  /** Categories that have at least one available item (controls filter chips + list). */
+  const categoriesForFilter = useMemo(
+    () => availableCategories.filter((c) => c.items.length > 0),
+    [availableCategories]
+  );
+
+  /**
+   * `null` — фильтр не применён, показываются все категории.
+   * Иначе — только категории из множества (несколько можно).
+   */
+  const [activeCategoryFilter, setActiveCategoryFilter] = useState<Set<string> | null>(null);
+
+  useEffect(() => {
+    const valid = new Set(categoriesForFilter.map((c) => c.id));
+    setActiveCategoryFilter((prev) => {
+      if (prev === null) return null;
+      const next = new Set([...prev].filter((id) => valid.has(id)));
+      return next.size === 0 ? null : next;
+    });
+  }, [categoriesForFilter]);
+
+  const filterActive = activeCategoryFilter !== null;
+
+  const visibleCategories = useMemo(() => {
+    if (activeCategoryFilter === null) return categoriesForFilter;
+    return categoriesForFilter.filter((c) => activeCategoryFilter.has(c.id));
+  }, [categoriesForFilter, activeCategoryFilter]);
+
+  const toggleCategoryFilter = (categoryId: string) => {
+    setActiveCategoryFilter((prev) => {
+      if (prev === null) {
+        return new Set([categoryId]);
+      }
+      const next = new Set(prev);
+      if (next.has(categoryId)) {
+        next.delete(categoryId);
+        return next.size === 0 ? null : next;
+      }
+      next.add(categoryId);
+      return next;
+    });
+  };
+
+  const clearCategoryFilter = () => setActiveCategoryFilter(null);
+
   useEffect(() => {
     let cancelled = false;
     let lastRefreshAt = 0;
@@ -84,6 +129,23 @@ export function StoreMenuClient({ slug, menu }: { slug: string; menu: StoreMenu 
     };
   }, [qrToken, slug, refreshing]);
 
+  /** Периодическое обновление меню — новые категории/позиции от баристы без смены вкладки. */
+  useEffect(() => {
+    let cancelled = false;
+    const id = window.setInterval(async () => {
+      try {
+        const next = await getStoreMenuLive(slug, qrToken);
+        if (!cancelled) setMenuState(next);
+      } catch {
+        /* тихо: сеть может моргнуть */
+      }
+    }, 45_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [slug, qrToken]);
+
   useEffect(() => {
     if (!toast) return;
     const t = window.setTimeout(() => setToast(null), 2200);
@@ -92,11 +154,54 @@ export function StoreMenuClient({ slug, menu }: { slug: string; menu: StoreMenu 
 
   return (
     <div className="min-h-screen bg-zinc-50">
-      <AppHeader slug={slug} title={title} />
+      <AppHeader slug={slug} title={title}>
+        {categoriesForFilter.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={clearCategoryFilter}
+              aria-pressed={!filterActive}
+              className={`rounded-full border px-3 py-1.5 text-xs font-semibold shadow-sm transition-colors ${
+                !filterActive
+                  ? "border-zinc-900 bg-zinc-900 text-white"
+                  : "border-zinc-200 bg-white text-zinc-500 hover:bg-zinc-50"
+              }`}
+            >
+              Все
+            </button>
+            {categoriesForFilter.map((cat) => {
+              const selected = filterActive && activeCategoryFilter?.has(cat.id);
+              const neutral = !filterActive;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  aria-pressed={Boolean(selected)}
+                  onClick={() => toggleCategoryFilter(cat.id)}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold shadow-sm transition-colors ${
+                    neutral
+                      ? "border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50"
+                      : selected
+                        ? "border-zinc-900 bg-zinc-900 text-white"
+                        : "border-zinc-200 bg-zinc-100 text-zinc-400"
+                  }`}
+                >
+                  {cat.name}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+      </AppHeader>
 
       <main className="mx-auto max-w-xl px-4 py-6">
         <div className="flex flex-col gap-7">
-          {availableCategories.map((cat) => (
+          {visibleCategories.length === 0 && categoriesForFilter.length > 0 && filterActive ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              По выбранному фильтру сейчас нет категорий. Нажмите «Все» или выберите другие категории.
+            </div>
+          ) : null}
+          {visibleCategories.map((cat) => (
             <section key={cat.id} className="flex flex-col gap-3">
               <h2 className="text-sm font-semibold text-zinc-900">{cat.name}</h2>
               <div className="flex flex-col gap-2">

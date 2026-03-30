@@ -11,15 +11,17 @@ export default function Home() {
           </p>
         </header>
 
-        <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-          <div className="text-sm text-zinc-600">Пример для dev-сида:</div>
-          <Link
-            href="/s/demo"
-            className="mt-2 inline-flex items-center justify-center rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white"
-          >
-            Открыть /s/demo
-          </Link>
-        </div>
+        {process.env.NODE_ENV === "development" ? (
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+            <div className="text-sm text-zinc-600">Пример для dev-сида:</div>
+            <Link
+              href="/s/demo"
+              className="mt-2 inline-flex items-center justify-center rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white"
+            >
+              Открыть /s/demo
+            </Link>
+          </div>
+        ) : null}
       </main>
     </div>
   );
