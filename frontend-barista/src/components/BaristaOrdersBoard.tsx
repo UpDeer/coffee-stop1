@@ -2,7 +2,7 @@
 
 import type { Dispatch, SetStateAction } from "react";
 
-import type { BaristaOrder } from "@/lib/types";
+import type { BaristaOrder, BaristaOrderLine } from "@/lib/types";
 
 function formatRublesFromCents(amountCents: number) {
   const rub = amountCents / 100;
@@ -11,6 +11,19 @@ function formatRublesFromCents(amountCents: number) {
     currency: "RUB",
     maximumFractionDigits: 0,
   }).format(rub);
+}
+
+function OrderLinesList({ lines }: { lines: BaristaOrderLine[] }) {
+  if (!lines.length) return null;
+  return (
+    <ul className="mt-2 list-none space-y-1 pl-0 text-xs text-zinc-600">
+      {lines.map((l, idx) => (
+        <li key={idx} className="leading-snug">
+          <span className="tabular-nums font-medium text-zinc-700">{l.quantity}×</span> {l.name}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 export function BaristaOrdersBoard({
@@ -102,9 +115,7 @@ export function BaristaOrdersBoard({
                   </div>
                 </div>
 
-                <div className="mt-2 text-xs text-zinc-600">
-                  {o.lines.map((l) => `${l.quantity}x ${l.name}`).join(" · ")}
-                </div>
+                <OrderLinesList lines={o.lines} />
 
                 {o.fiscal_status !== "done" ? (
                   <div className="mt-2 text-xs text-zinc-600">
@@ -196,9 +207,7 @@ export function BaristaOrdersBoard({
                     </div>
                   </div>
 
-                  <div className="mt-2 text-xs text-zinc-600">
-                    {o.lines.map((l) => `${l.quantity}x ${l.name}`).join(" · ")}
-                  </div>
+                  <OrderLinesList lines={o.lines} />
 
                   <div className="mt-3 rounded-xl border border-zinc-200 bg-white p-3">
                     <div className="text-xs text-zinc-500">Печать (stub)</div>

@@ -114,7 +114,7 @@
 
 ## 10) Проверка боевого контура (Go-Live checklist)
 1. Открывается:
-   - `https://guest.<domain>/s/demo`
+   - `https://guest.<domain>/s/center`
    - `https://barista.<domain>`
    - `https://api.<domain>/api/v1/health`
 2. Тест оплаты:

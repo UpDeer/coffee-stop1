@@ -24,7 +24,7 @@ npm run dev
 
 Открой `http://localhost:3000`, затем:
 
-- `http://localhost:3000/s/demo` — меню (если сиды/демо-точка созданы)
+- `http://localhost:3000/s/center` — меню (если сиды/демо-точка созданы)
 
 ### Notes
 

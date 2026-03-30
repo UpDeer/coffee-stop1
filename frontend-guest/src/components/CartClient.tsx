@@ -108,7 +108,7 @@ export function CartClient({ slug, menu }: { slug: string; menu: StoreMenu }) {
           )}
 
           <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-            <div className="text-sm font-semibold text-zinc-900">Email для чека и статуса</div>
+            <div className="text-sm font-semibold text-zinc-900">Email для чека и статуса заказа</div>
             <input
               value={cart.guestEmail}
               onChange={(e) => {

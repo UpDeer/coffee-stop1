@@ -53,9 +53,9 @@ def main() -> None:
                 RETURNING id
                 """
             ),
-            {"id": store_id, "slug": "demo", "name": "Coffee Stop", "tz": "Europe/Moscow"},
+            {"id": store_id, "slug": "center", "name": "Coffee Stop", "tz": "Europe/Moscow"},
         )
-        store_id = conn.execute(text("SELECT id FROM stores WHERE slug='demo'")).scalar_one()
+        store_id = conn.execute(text("SELECT id FROM stores WHERE slug='center'")).scalar_one()
 
         # Categories
         conn.execute(
@@ -142,7 +142,7 @@ def main() -> None:
             },
         )
 
-    print("Seed complete. Store slug=demo")
+    print("Seed complete. Store slug=center")
 
 
 if __name__ == "__main__":

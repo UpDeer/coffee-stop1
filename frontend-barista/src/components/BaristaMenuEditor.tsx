@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { getMenuEditor, putMenuEditor } from "@/lib/api";
+import { normalizeExternalImageUrl } from "@/lib/imageUrl";
 import type {
   MenuEditorCategory,
   MenuEditorItem,
@@ -302,13 +303,31 @@ export function BaristaMenuEditor({ storeId }: { storeId: string | null }) {
                         className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm disabled:bg-zinc-100"
                         disabled={it.image_url === null}
                         value={it.image_url ?? ""}
-                        placeholder="https://…"
+                        placeholder="https://… или ссылка с Google Диска"
                         onChange={(e) => {
                           const v = e.target.value.trim() || null;
                           setCategories((prev) =>
                             prev.map((c, i) =>
                               i === ci
                                 ? { ...c, items: c.items.map((x, j) => (j === ii ? { ...x, image_url: v } : x)) }
+                                : c
+                            )
+                          );
+                        }}
+                        onBlur={() => {
+                          if (it.image_url === null) return;
+                          const normalized = normalizeExternalImageUrl(it.image_url);
+                          const cur = it.image_url.trim();
+                          if (normalized === null || normalized === cur) return;
+                          setCategories((prev) =>
+                            prev.map((c, i) =>
+                              i === ci
+                                ? {
+                                    ...c,
+                                    items: c.items.map((x, j) =>
+                                      j === ii ? { ...x, image_url: normalized } : x
+                                    ),
+                                  }
                                 : c
                             )
                           );

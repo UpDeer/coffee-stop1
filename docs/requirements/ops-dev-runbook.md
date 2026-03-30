@@ -49,7 +49,7 @@ npm run dev
 ```
 
 Открывай в браузере:
-- `http://localhost:3000/s/demo`
+- `http://localhost:3000/s/center`
 
 ## 4) Подними Barista UI
 Важно: у Guest UI уже порт `3000`, поэтому Barista обычно запускают на другом порту.

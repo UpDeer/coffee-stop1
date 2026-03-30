@@ -12,6 +12,7 @@ import Link from "next/link";
 
 import { addLine, removeLine, updateLine } from "@/lib/cart";
 import { getStoreMenuLive } from "@/lib/api";
+import { normalizeExternalImageUrl } from "@/lib/imageUrl";
 import { formatRublesFromCents } from "@/lib/money";
 import type { MenuItem, StoreMenu } from "@/lib/types";
 
@@ -65,7 +66,12 @@ export function StoreMenuClient({ slug, menu }: { slug: string; menu: StoreMenu 
     setActiveCategoryFilter((prev) => {
       if (prev === null) return null;
       const next = new Set([...prev].filter((id) => valid.has(id)));
-      return next.size === 0 ? null : next;
+      if (next.size === 0) return null;
+      // Выбраны все категории по отдельности → как режим «Все».
+      if (valid.size > 0 && next.size === valid.size && [...valid].every((id) => next.has(id))) {
+        return null;
+      }
+      return next;
     });
   }, [categoriesForFilter]);
 
@@ -78,8 +84,13 @@ export function StoreMenuClient({ slug, menu }: { slug: string; menu: StoreMenu 
 
   const toggleCategoryFilter = (categoryId: string) => {
     setActiveCategoryFilter((prev) => {
+      const full = new Set(categoriesForFilter.map((c) => c.id));
+      const isFullSelection = (s: Set<string>) =>
+        full.size > 0 && s.size === full.size && [...full].every((id) => s.has(id));
+
       if (prev === null) {
-        return new Set([categoryId]);
+        const next = new Set([categoryId]);
+        return isFullSelection(next) ? null : next;
       }
       const next = new Set(prev);
       if (next.has(categoryId)) {
@@ -87,7 +98,7 @@ export function StoreMenuClient({ slug, menu }: { slug: string; menu: StoreMenu 
         return next.size === 0 ? null : next;
       }
       next.add(categoryId);
-      return next;
+      return isFullSelection(next) ? null : next;
     });
   };
 
@@ -211,7 +222,7 @@ export function StoreMenuClient({ slug, menu }: { slug: string; menu: StoreMenu 
                       <div className="min-w-0">
                         {it.image_url ? (
                           <img
-                            src={it.image_url}
+                            src={normalizeExternalImageUrl(it.image_url) ?? it.image_url}
                             alt={it.name}
                             loading="lazy"
                             className="mb-3 h-20 w-full rounded-xl object-cover"
