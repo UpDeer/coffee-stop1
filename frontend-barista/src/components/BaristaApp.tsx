@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { getStores, listBaristaOrders, markOrderPaid, markOrderReady } from "@/lib/api";
 import type { BaristaOrder, BaristaStore } from "@/lib/types";
@@ -21,6 +21,16 @@ export function BaristaApp() {
   const [dragOverReady, setDragOverReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+
+  const fetchAll = useCallback(
+    async (sid: string) => {
+      const [p, r] = await Promise.all([listBaristaOrders(sid, "paid"), listBaristaOrders(sid, "ready")]);
+      setPaid(p.orders);
+      setReady(r.orders);
+      return { paid: p.orders, ready: r.orders };
+    },
+    [setPaid, setReady]
+  );
 
   useEffect(() => {
     const run = async () => {
@@ -67,19 +77,14 @@ export function BaristaApp() {
       timeoutId = window.setTimeout(() => void fetchAll(), delayMs);
     };
 
-    const fetchAll = async () => {
+    const tick = async () => {
       if (cancelled || inFlight) return;
       inFlight = true;
       try {
-        const [p, r] = await Promise.all([
-          listBaristaOrders(storeId, "paid"),
-          listBaristaOrders(storeId, "ready"),
-        ]);
+        const { paid: paidOrders, ready: readyOrders } = await fetchAll(storeId);
         if (cancelled) return;
-        setPaid(p.orders);
-        setReady(r.orders);
 
-        const key = computeKey(p.orders, r.orders);
+        const key = computeKey(paidOrders, readyOrders);
         if (lastKey === key) {
           // No changes: backoff polling to reduce load.
           delayMs = Math.min(delayMs * 2, 10000);
@@ -92,15 +97,16 @@ export function BaristaApp() {
         setErr(e instanceof Error ? e.message : "orders_failed");
       } finally {
         inFlight = false;
+        scheduleNext();
       }
     };
 
-    void fetchAll();
+    void tick();
     return () => {
       cancelled = true;
       if (timeoutId !== null) window.clearTimeout(timeoutId);
     };
-  }, [storeId, tab]);
+  }, [storeId, tab, fetchAll]);
 
   const printedKey = (orderId: string) => `barista:printed:${orderId}`;
 
@@ -111,9 +117,17 @@ export function BaristaApp() {
   const onDropReady = async (orderId: string) => {
     if (storeClosed) return;
     try {
+      // Optimistic UI: move card immediately.
+      const moved = paid.find((o) => o.order_id === orderId);
+      if (moved) {
+        setPaid((xs) => xs.filter((x) => x.order_id !== orderId));
+        setReady((xs) => [moved, ...xs]);
+      }
       await markOrderReady(orderId);
+      if (storeId) await fetchAll(storeId);
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : "mark_ready_failed");
+      if (storeId) await fetchAll(storeId);
     }
   };
 
@@ -122,10 +136,23 @@ export function BaristaApp() {
   const onDropPaid = async (orderId: string) => {
     if (storeClosed) return;
     try {
+      const moved = ready.find((o) => o.order_id === orderId);
+      if (moved) {
+        setReady((xs) => xs.filter((x) => x.order_id !== orderId));
+        setPaid((xs) => [moved, ...xs]);
+      }
       await markOrderPaid(orderId);
+      if (storeId) await fetchAll(storeId);
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : "mark_paid_failed");
+      if (storeId) await fetchAll(storeId);
     }
+  };
+
+  const onMarkReady = async (orderId: string) => {
+    if (storeClosed) return;
+    // Reuse the same behavior as drop.
+    await onDropReady(orderId);
   };
 
   return (
@@ -137,7 +164,14 @@ export function BaristaApp() {
             <div className="text-xs text-zinc-500">
               {selectedStore ? (
                 <>
-                  <div className="truncate font-medium text-zinc-800">{selectedStore.name}</div>
+                  <button
+                    type="button"
+                    onClick={() => setTab("orders")}
+                    className="truncate text-left font-medium text-zinc-800 hover:underline"
+                    title="Перейти к заказам"
+                  >
+                    {selectedStore.name}
+                  </button>
                   <div className="mt-0.5 text-zinc-500">
                     В очереди: {queueCount} · Готово: {doneCount}
                     {storeClosed ? " — ЗАКРЫТА" : ""}
@@ -208,6 +242,7 @@ export function BaristaApp() {
             setDragOverReady={setDragOverReady}
             onDropPaid={onDropPaid}
             onDropReady={onDropReady}
+            onMarkReady={onMarkReady}
             onError={setErr}
             printedKey={printedKey}
             setPrintedTick={setPrintedTick}

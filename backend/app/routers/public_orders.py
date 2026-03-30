@@ -206,6 +206,7 @@ def order_status(order_id: str, db: Session = Depends(get_db)) -> dict:
                 SELECT
                   id,
                   status,
+                  store_id,
                   public_number,
                   ready_at,
                   created_at,
@@ -223,8 +224,34 @@ def order_status(order_id: str, db: Session = Depends(get_db)) -> dict:
         raise HTTPException(status_code=404, detail="order_not_found")
 
     status = row["status"]
+    estimated_wait_minutes: int | None = None
     lines: list[dict] = []
     modifiers_by_line_id: dict[str, list[dict]] = {}
+
+    # Approximate wait time (MVP):
+    # - only for `paid` orders
+    # - compute queue position among `paid` orders in the same store
+    # - estimate assumes average time per position (config can be added later)
+    if status == "paid" and row.get("created_at") is not None:
+        queue_position = (
+            db.execute(
+                text(
+                    """
+                    SELECT COUNT(*) AS cnt
+                    FROM orders
+                    WHERE store_id = :sid
+                      AND status = 'paid'
+                      AND created_at <= :created_at
+                    """
+                ),
+                {"sid": row["store_id"], "created_at": row["created_at"]},
+            )
+            .mappings()
+            .first()
+        )
+        cnt = int(queue_position["cnt"]) if queue_position and queue_position.get("cnt") is not None else 1
+        avg_minutes_per_paid_position = 6
+        estimated_wait_minutes = max(1, cnt * avg_minutes_per_paid_position)
 
     # Performance optimization:
     # In payment_pending (and other non-final states) we avoid loading order_lines/modifiers.
@@ -283,6 +310,7 @@ def order_status(order_id: str, db: Session = Depends(get_db)) -> dict:
         "ready_at": row["ready_at"].isoformat() if row["ready_at"] else None,
         "created_at": row["created_at"].isoformat() if row["created_at"] else None,
         "total_cents": row["total_cents"],
+        "estimated_wait_minutes": estimated_wait_minutes,
         "lines": [
             {
                 "id": str(l["id"]),

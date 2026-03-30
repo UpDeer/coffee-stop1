@@ -18,6 +18,7 @@ type ViewState =
       publicNumber: number | null;
       readyAt: string | null;
       totalCents: number;
+      estimatedWaitMinutes: number | null;
       lines: Array<{
         id: string;
         name: string;
@@ -46,6 +47,7 @@ export function OrderStatusClient({ slug, orderId }: { slug: string; orderId: st
   const prevStatusRef = useRef<string | null>(null);
   const searchParams = useSearchParams();
   const qrToken = searchParams.get("t");
+  const tickRef = useRef<(() => void) | null>(null);
   const withQr = (href: string) => {
     if (!qrToken) return href;
     const sep = href.includes("?") ? "&" : "?";
@@ -82,6 +84,7 @@ export function OrderStatusClient({ slug, orderId }: { slug: string; orderId: st
           publicNumber: s.public_number,
           readyAt: s.ready_at,
           totalCents: s.total_cents,
+          estimatedWaitMinutes: s.estimated_wait_minutes ?? null,
           lines: s.lines,
         });
 
@@ -129,12 +132,31 @@ export function OrderStatusClient({ slug, orderId }: { slug: string; orderId: st
       }
     };
 
+    tickRef.current = () => {
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
+      void tick();
+    };
+
     void tick();
     return () => {
       cancelled = true;
       if (timeoutId !== null) window.clearTimeout(timeoutId);
+      tickRef.current = null;
     };
   }, [orderId, slug]);
+
+  useEffect(() => {
+    const onFocus = () => tickRef.current?.();
+    const onVis = () => {
+      if (document.visibilityState === "visible") tickRef.current?.();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, []);
 
   const content = useMemo(() => {
     if (state.kind === "loading") return { title: "Загружаем статус…", body: "" };
@@ -144,6 +166,7 @@ export function OrderStatusClient({ slug, orderId }: { slug: string; orderId: st
 
   const publicNumber = state.kind === "ok" ? state.publicNumber : null;
   const lines = state.kind === "ok" ? state.lines : [];
+  const estimatedWaitMinutes = state.kind === "ok" ? state.estimatedWaitMinutes : null;
 
   return (
     <div className="min-h-screen bg-zinc-50">
@@ -188,7 +211,9 @@ export function OrderStatusClient({ slug, orderId }: { slug: string; orderId: st
                   {state.status === "payment_pending"
                     ? "Обычно подтверждение занимает несколько секунд."
                     : state.status === "paid"
-                      ? "Обычно готовность через 5–8 минут."
+                      ? state.estimatedWaitMinutes
+                        ? `Примерно готов через ${estimatedWaitMinutes} минут.`
+                        : "Обычно готовность через 5–8 минут."
                       : state.status === "ready"
                         ? "Готово — можно забирать."
                         : "Обновляйте страницу через минуту."}
@@ -204,6 +229,13 @@ export function OrderStatusClient({ slug, orderId }: { slug: string; orderId: st
             >
               В меню
             </Link>
+            <button
+              type="button"
+              onClick={() => tickRef.current?.()}
+              className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900"
+            >
+              Обновить
+            </button>
           </div>
 
           <div className="mt-3 text-xs text-zinc-500">

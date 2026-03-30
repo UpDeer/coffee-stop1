@@ -2,7 +2,6 @@
 
 import type { Dispatch, SetStateAction } from "react";
 
-import { markOrderReady } from "@/lib/api";
 import type { BaristaOrder } from "@/lib/types";
 
 function formatRublesFromCents(amountCents: number) {
@@ -24,6 +23,7 @@ export function BaristaOrdersBoard({
   setDragOverReady,
   onDropPaid,
   onDropReady,
+  onMarkReady,
   onError,
   printedKey,
   setPrintedTick,
@@ -37,6 +37,7 @@ export function BaristaOrdersBoard({
   setDragOverReady: (v: boolean) => void;
   onDropPaid: (orderId: string) => void | Promise<void>;
   onDropReady: (orderId: string) => void | Promise<void>;
+  onMarkReady: (orderId: string) => void | Promise<void>;
   onError: (msg: string) => void;
   printedKey: (orderId: string) => string;
   setPrintedTick: Dispatch<SetStateAction<number>>;
@@ -118,7 +119,7 @@ export function BaristaOrdersBoard({
                   disabled={storeClosed || o.fiscal_status !== "done"}
                   onClick={async () => {
                     try {
-                      await markOrderReady(o.order_id);
+                      await onMarkReady(o.order_id);
                     } catch (e: unknown) {
                       onError(e instanceof Error ? e.message : "mark_ready_failed");
                     }

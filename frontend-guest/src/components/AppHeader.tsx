@@ -23,8 +23,20 @@ export function AppHeader({ slug, title }: { slug: string; title: string }) {
     <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/85 backdrop-blur">
       <div className="mx-auto flex max-w-xl items-center justify-between px-4 py-3">
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-zinc-900">{title}</div>
-          <div className="text-xs text-zinc-500">/{slug}</div>
+          <Link
+            href={withQr(`/s/${encodeURIComponent(slug)}`)}
+            className="block truncate text-sm font-semibold text-zinc-900 hover:underline"
+            title="Вернуться в меню"
+          >
+            {title}
+          </Link>
+          <Link
+            href={withQr(`/s/${encodeURIComponent(slug)}`)}
+            className="block text-xs text-zinc-500 hover:underline"
+            title="Вернуться в меню"
+          >
+            /{slug}
+          </Link>
         </div>
         <Link
           href={withQr(`/s/${encodeURIComponent(slug)}/cart`)}

@@ -62,6 +62,14 @@ export async function getStoreMenu(slug: string, qrToken?: string | null): Promi
   } as unknown as RequestInit);
 }
 
+export async function getStoreMenuLive(slug: string, qrToken?: string | null): Promise<StoreMenu> {
+  // For client-side refresh we want the latest menu (no cache).
+  const tokenQuery = qrToken ? `?t=${encodeURIComponent(qrToken)}` : "";
+  return await apiFetch<StoreMenu>(`/public/stores/${encodeURIComponent(slug)}/menu${tokenQuery}`, {
+    cache: "no-store",
+  });
+}
+
 export async function createOrder(slug: string, payload: CreateOrderIn): Promise<CreateOrderOut> {
   return await apiFetch<CreateOrderOut>(`/public/stores/${encodeURIComponent(slug)}/orders`, {
     method: "POST",

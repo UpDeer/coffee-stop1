@@ -8,7 +8,10 @@ import { AppHeader } from "@/components/AppHeader";
 import { ItemCustomizeModal } from "@/components/ItemCustomizeModal";
 import { useCart } from "@/lib/useCart";
 import { isValidEmail } from "@/lib/validation";
-import { addLine } from "@/lib/cart";
+import Link from "next/link";
+
+import { addLine, removeLine, updateLine } from "@/lib/cart";
+import { getStoreMenuLive } from "@/lib/api";
 import { formatRublesFromCents } from "@/lib/money";
 import type { MenuItem, StoreMenu } from "@/lib/types";
 
@@ -17,7 +20,8 @@ function hasModifiers(item: MenuItem): boolean {
 }
 
 export function StoreMenuClient({ slug, menu }: { slug: string; menu: StoreMenu }) {
-  const title = menu.store.name;
+  const [menuState, setMenuState] = useState<StoreMenu>(menu);
+  const title = menuState.store.name;
   const searchParams = useSearchParams();
   const qrToken = searchParams.get("t");
   const router = useRouter();
@@ -25,6 +29,7 @@ export function StoreMenuClient({ slug, menu }: { slug: string; menu: StoreMenu 
   const cart = useCart(slug);
   const emailOk = useMemo(() => isValidEmail(cart.guestEmail), [cart.guestEmail]);
   const [toast, setToast] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const withQr = (href: string) => {
     if (!qrToken) return href;
@@ -32,12 +37,52 @@ export function StoreMenuClient({ slug, menu }: { slug: string; menu: StoreMenu 
     return `${href}${sep}t=${encodeURIComponent(qrToken)}`;
   };
 
+  useEffect(() => {
+    setMenuState(menu);
+  }, [menu]);
+
   const availableCategories = useMemo(() => {
-    return menu.categories.map((c) => ({
+    return menuState.categories.map((c) => ({
       ...c,
       items: c.items.filter((it) => it.is_available),
     }));
-  }, [menu.categories]);
+  }, [menuState.categories]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let lastRefreshAt = 0;
+
+    const refreshMenu = async () => {
+      if (refreshing) return;
+      const now = Date.now();
+      if (now - lastRefreshAt < 1500) return; // avoid burst
+      lastRefreshAt = now;
+      setRefreshing(true);
+      try {
+        const next = await getStoreMenuLive(slug, qrToken);
+        if (cancelled) return;
+        setMenuState(next);
+      } catch (e: unknown) {
+        if (cancelled) return;
+        setToast(e instanceof Error ? `Не удалось обновить меню: ${e.message}` : "Не удалось обновить меню.");
+      } finally {
+        if (!cancelled) setRefreshing(false);
+      }
+    };
+
+    const onFocus = () => void refreshMenu();
+    const onVis = () => {
+      if (document.visibilityState === "visible") void refreshMenu();
+    };
+
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [qrToken, slug, refreshing]);
 
   useEffect(() => {
     if (!toast) return;
@@ -85,22 +130,85 @@ export function StoreMenuClient({ slug, menu }: { slug: string; menu: StoreMenu 
                           Выбрать
                         </button>
                       ) : (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            (() => {
-                              addLine(slug, {
-                                menu_item_id: it.id,
-                                quantity: 1,
-                                modifier_option_ids: [],
-                              });
-                              setToast(`Добавлено: ${it.name}`);
-                            })()
+                        (() => {
+                          const matching = cart.lines.filter(
+                            (l) => l.menu_item_id === it.id && (l.modifier_option_ids?.length ?? 0) === 0
+                          );
+                          const totalQty = matching.reduce((s, l) => s + (l.quantity ?? 0), 0);
+                          const primary = matching[0] ?? null;
+
+                          if (!primary || totalQty <= 0) {
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  addLine(slug, {
+                                    menu_item_id: it.id,
+                                    quantity: 1,
+                                    modifier_option_ids: [],
+                                  });
+                                  setToast(`Добавлено: ${it.name}`);
+                                }}
+                                className="shrink-0 rounded-xl bg-zinc-900 px-3 py-2 text-sm font-medium text-white"
+                              >
+                                В корзину
+                              </button>
+                            );
                           }
-                          className="shrink-0 rounded-xl bg-zinc-900 px-3 py-2 text-sm font-medium text-white"
-                        >
-                          В корзину
-                        </button>
+
+                          const normalize = () => {
+                            // If duplicates exist (multiple lines for the same simple item),
+                            // collapse them into the first line to make +/- stable.
+                            if (matching.length <= 1) return;
+                            const nextQty = totalQty;
+                            updateLine(slug, primary.id, { quantity: Math.max(1, nextQty) });
+                            for (const extra of matching.slice(1)) removeLine(slug, extra.id);
+                          };
+
+                          const dec = () => {
+                            normalize();
+                            if (totalQty <= 1) {
+                              removeLine(slug, primary.id);
+                            } else {
+                              updateLine(slug, primary.id, { quantity: Math.max(1, totalQty - 1) });
+                            }
+                          };
+
+                          const inc = () => {
+                            normalize();
+                            updateLine(slug, primary.id, { quantity: Math.max(1, totalQty + 1) });
+                          };
+
+                          return (
+                            <div className="shrink-0 flex flex-col items-end gap-2">
+                              <Link
+                                href={withQr(`/s/${encodeURIComponent(slug)}/cart`)}
+                                className="rounded-xl bg-zinc-900 px-3 py-2 text-sm font-medium text-white"
+                              >
+                                Перейти в корзину
+                              </Link>
+                              <div className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-2 py-1">
+                                <button
+                                  type="button"
+                                  onClick={dec}
+                                  className="h-9 w-9 rounded-xl border border-zinc-200 bg-white text-lg"
+                                  aria-label="Уменьшить количество"
+                                >
+                                  −
+                                </button>
+                                <div className="w-8 text-center text-sm font-semibold text-zinc-900">{totalQty}</div>
+                                <button
+                                  type="button"
+                                  onClick={inc}
+                                  className="h-9 w-9 rounded-xl border border-zinc-200 bg-white text-lg"
+                                  aria-label="Увеличить количество"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })()
                       )}
                     </div>
                   </div>

@@ -71,6 +71,7 @@ export type OrderStatusOut = {
   ready_at: string | null;
   created_at: string | null;
   total_cents: number;
+  estimated_wait_minutes: number | null;
   lines: Array<{
     id: string;
     name: string;

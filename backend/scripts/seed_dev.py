@@ -53,7 +53,7 @@ def main() -> None:
                 RETURNING id
                 """
             ),
-            {"id": store_id, "slug": "demo", "name": "Demo Coffee Stop", "tz": "Europe/Moscow"},
+            {"id": store_id, "slug": "demo", "name": "Coffee Stop", "tz": "Europe/Moscow"},
         )
         store_id = conn.execute(text("SELECT id FROM stores WHERE slug='demo'")).scalar_one()
 
