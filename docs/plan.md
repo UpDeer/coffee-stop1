@@ -517,9 +517,24 @@ SLA: через сколько минут непринятые заказы уб
 
 Этап 7. Наблюдаемость и качество
 
+Инфраструктура/прод (DONE):
+- Добавлены `Dockerfile` для `backend`, `frontend-guest`, `frontend-barista`.
+- Добавлен GHCR workflow: `.github/workflows/build-and-push-ghcr.yml` (build/push образов).
+- Добавлен production compose: `docker-compose.prod.yml`.
+- Применена схема БД в проде (таблицы `stores`, `menu_items` и т.д. — `backend/schema.sql` / миграции).
+- Настроен reverse proxy в Nginx: `deploy/nginx/conf.d/coffee-stop.conf` (проксирование на контейнеры).
+- HTTPS/TLS в проде: `certbot` (Let’s Encrypt) + хранение сертификатов в `deploy/certbot/*`.
+- Frontend (гость/бариста): автоопределение `api.*` по текущему домену (для корректной работы за Nginx).
 
-
-
+Переменные окружения, которые введены (в `*.env.prod.example`):
+- `DOMAIN`
+- `COFFEE_STOP_BACKEND_IMAGE`, `COFFEE_STOP_GUEST_IMAGE`, `COFFEE_STOP_BARISTA_IMAGE`
+- `DB_PASSWORD`, `DATABASE_URL`
+- `CORS_ORIGINS`
+- Email: `MAIL_HOST`, `MAIL_PORT`, `MAIL_FROM`, `MAIL_USER`, `MAIL_PASSWORD`, `MAIL_USE_TLS`
+- Tochka: `TOCHKA_API_BASE_URL`, `TOCHKA_API_BEARER_TOKEN`, `TOCHKA_CUSTOMER_CODE`, `TOCHKA_MERCHANT_ID`, `TOCHKA_PAYMENT_PURPOSE`, `TOCHKA_PAYMENT_REDIRECT_URL`, `TOCHKA_PAYMENT_FAIL_REDIRECT_URL`, `TOCHKA_PAYMENT_TTL_MINUTES`, `TOCHKA_PAYMENT_MODES`, `TOCHKA_WEBHOOK_PUBLIC_JWK_JSON`
+- Evotor: `EVOTOR_INTEGRATION_MODE`, `EVOTOR_FISCALIZATION_URL`, `EVOTOR_LOGIN`, `EVOTOR_PASSWORD`, `EVOTOR_GROUP_CODE`, `EVOTOR_CASHIER_UUID`
+- Для SSR fallback в контейнерах: `API_INTERNAL_BASE_URL`
 
 Метрики:
 
