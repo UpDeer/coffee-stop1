@@ -74,7 +74,8 @@ export function BaristaApp() {
 
     const scheduleNext = () => {
       if (cancelled) return;
-      timeoutId = window.setTimeout(() => void fetchAll(storeId), delayMs);
+      // Must schedule `tick`, not `fetchAll`: only `tick`'s `finally` chains the next poll.
+      timeoutId = window.setTimeout(() => void tick(), delayMs);
     };
 
     const tick = async () => {
