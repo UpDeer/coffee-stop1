@@ -165,7 +165,11 @@ export function StoreMenuClient({ slug, menu }: { slug: string; menu: StoreMenu 
 
   return (
     <div className="min-h-screen bg-zinc-50">
-      <AppHeader slug={slug} title={title}>
+      <AppHeader
+        slug={slug}
+        title={title}
+        subtitle="Быстрое меню и заказ кофе с самовывозом"
+      >
         {categoriesForFilter.length > 0 ? (
           <div className="flex flex-wrap items-center gap-2">
             <button

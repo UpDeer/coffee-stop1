@@ -1,8 +1,8 @@
+import { InfoPageShell } from "@/components/InfoPageShell";
+
 export default function RequisitesPage() {
   return (
-    <main className="mx-auto max-w-xl px-4 py-8">
-      <h1 className="mb-4 text-2xl font-semibold text-zinc-900">Реквизиты ИП</h1>
-
+    <InfoPageShell title="Реквизиты ИП">
       <div className="space-y-4 text-sm text-zinc-700">
         <section>
           <div className="font-semibold text-zinc-900">Индивидуальный предприниматель</div>
@@ -30,7 +30,7 @@ export default function RequisitesPage() {
           </p>
         </section>
       </div>
-    </main>
+    </InfoPageShell>
   );
 }
 

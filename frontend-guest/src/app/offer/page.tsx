@@ -1,8 +1,8 @@
+import { InfoPageShell } from "@/components/InfoPageShell";
+
 export default function OfferPage() {
   return (
-    <main className="mx-auto max-w-xl px-4 py-8">
-      <h1 className="mb-4 text-2xl font-semibold text-zinc-900">Условия заказа / оферта</h1>
-
+    <InfoPageShell title="Условия заказа / оферта">
       <div className="space-y-4 text-sm text-zinc-700">
         <section>
           <div className="font-semibold text-zinc-900">1. Общие положения</div>
@@ -35,7 +35,7 @@ export default function OfferPage() {
           </p>
         </section>
       </div>
-    </main>
+    </InfoPageShell>
   );
 }
 

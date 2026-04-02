@@ -9,10 +9,12 @@ import { useCart } from "@/lib/useCart";
 export function AppHeader({
   slug,
   title,
+  subtitle,
   children,
 }: {
   slug: string;
   title: string;
+  subtitle?: string;
   children?: ReactNode;
 }) {
   const cart = useCart(slug);
@@ -38,6 +40,7 @@ export function AppHeader({
           >
             {title}
           </Link>
+          {subtitle ? <div className="mt-0.5 text-xs text-zinc-600">{subtitle}</div> : null}
         </div>
         <Link
           href={withQr(`/s/${encodeURIComponent(slug)}/cart`)}
