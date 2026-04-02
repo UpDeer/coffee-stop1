@@ -1,8 +1,16 @@
 import { InfoPageShell } from "@/components/InfoPageShell";
+import { sanitizeReturnPath } from "@/lib/returnNavigation";
 
-export default function RequisitesPage() {
+export default async function RequisitesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ return?: string }>;
+}) {
+  const { return: returnRaw } = await searchParams;
+  const closeHref = sanitizeReturnPath(returnRaw);
+
   return (
-    <InfoPageShell title="Реквизиты ИП">
+    <InfoPageShell title="Реквизиты ИП" closeHref={closeHref}>
       <div className="space-y-4 text-sm text-zinc-700">
         <section>
           <div className="font-semibold text-zinc-900">Индивидуальный предприниматель</div>

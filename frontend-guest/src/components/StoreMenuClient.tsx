@@ -168,7 +168,7 @@ export function StoreMenuClient({ slug, menu }: { slug: string; menu: StoreMenu 
       <AppHeader
         slug={slug}
         title={title}
-        subtitle="Быстрое меню и заказ кофе с самовывозом"
+        subtitle="Меню быстрого заказа кофе с самовывозом"
       >
         {categoriesForFilter.length > 0 ? (
           <div className="flex flex-wrap items-center gap-2">
