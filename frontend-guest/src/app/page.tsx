@@ -7,7 +7,7 @@ export default function Home() {
         <header className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">Coffee Stop</h1>
           <p className="text-sm text-zinc-600">
-            Открой меню точки по адресу <span className="font-mono">/s/&lt;slug&gt;</span>.
+            Быстрое меню и заказ кофе с самовывозом: выбери позиции, оплати и забери.
           </p>
         </header>
 
