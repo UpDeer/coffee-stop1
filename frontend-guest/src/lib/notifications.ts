@@ -24,14 +24,31 @@ export async function requestNotificationPermissionFromUser(): Promise<Notificat
   }
 }
 
-export function notifyOrderReady(publicNumber: number | null): void {
+type OrderLineForNotification = {
+  name: string;
+  quantity: number;
+  modifiers: Array<{ name: string; price_delta_cents: number }>;
+};
+
+function formatReadyLine(line: OrderLineForNotification): string {
+  const mods = line.modifiers?.length ? ` (${line.modifiers.map((m) => m.name).join(", ")})` : "";
+  return `${line.quantity}× ${line.name}${mods}`;
+}
+
+export function notifyOrderReady(publicNumber: number | null, lines: OrderLineForNotification[]): void {
   if (!notificationsSupported() || Notification.permission !== "granted") return;
   try {
+    const preview = lines?.length
+      ? lines.slice(0, 3).map(formatReadyLine).join("; ")
+      : "";
+
     new Notification("Заказ готов", {
       body:
         publicNumber != null
-          ? `Номер: ${publicNumber}`
-          : "Можно забирать на столе выдачи.",
+          ? `Номер: ${publicNumber}${preview ? `\n${preview}` : ""}`
+          : preview
+            ? preview
+            : "Можно забирать на столе выдачи.",
       tag: `order-ready-${publicNumber ?? "na"}`,
     });
   } catch {

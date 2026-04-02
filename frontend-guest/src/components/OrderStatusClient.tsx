@@ -99,7 +99,11 @@ export function OrderStatusClient({ slug, orderId }: { slug: string; orderId: st
 
         // Уведомление только если разрешение уже выдано (запрос — только по клику, см. блок ниже).
         if (s.status === "ready" && prev !== "ready") {
-          notifyOrderReady(s.public_number ?? null);
+          notifyOrderReady(
+            s.public_number ?? null,
+            // include chosen modifier options (e.g. volume) in notification body
+            s.lines
+          );
         }
 
         // Polling policy to reduce load:

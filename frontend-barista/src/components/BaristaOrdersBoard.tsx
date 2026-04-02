@@ -27,6 +27,9 @@ function OrderLinesList({ lines }: { lines: BaristaOrderLine[] }) {
                 .join(" · ")}
             </div>
           ) : null}
+          {l.modifiers?.length ? (
+            <div className="mt-0.5 text-[11px] text-zinc-600">{l.modifiers.map((m) => m.name).join(", ")}</div>
+          ) : null}
         </li>
       ))}
     </ul>

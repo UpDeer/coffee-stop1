@@ -99,6 +99,32 @@ def list_orders(
             out.append({"key": k, "label": k, "value": v, "unit": None})
         return out
 
+    line_ids = [str(l["id"]) for l in lines]
+    modifiers_by_line_id: dict[str, list[dict]] = {}
+    if line_ids:
+        mods = (
+            db.execute(
+                text(
+                    """
+                    SELECT
+                      olm.order_line_id,
+                      olm.name_snapshot,
+                      olm.price_delta_cents
+                    FROM order_line_modifiers olm
+                    WHERE olm.order_line_id = ANY(:lids)
+                    ORDER BY olm.order_line_id, olm.id
+                    """
+                ),
+                {"lids": line_ids},
+            )
+            .mappings()
+            .all()
+        )
+        for m in mods:
+            modifiers_by_line_id.setdefault(str(m["order_line_id"]), []).append(
+                {"name": m["name_snapshot"], "price_delta_cents": m["price_delta_cents"]}
+            )
+
     lines_by_order: dict[str, list[dict]] = {}
     for l in lines:
         params = l.get("item_params_snapshot") or {}
@@ -111,9 +137,7 @@ def list_orders(
                 "line_total_cents": l["line_total_cents"],
                 "item_params": params,
                 "item_params_display": _params_display(params, schema),
-                # Modifiers are not displayed in current Barista UI.
-                # Returning empty array reduces DB work significantly.
-                "modifiers": [],
+                "modifiers": modifiers_by_line_id.get(str(l["id"]), []),
             }
         )
 
