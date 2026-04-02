@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+import json
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -31,7 +32,7 @@ def get_menu_editor(store_id: str, db: Session = Depends(get_db)) -> dict:
     categories = db.execute(
         text(
             """
-            SELECT id, name, sort_order
+            SELECT id, name, sort_order, item_params_schema
             FROM menu_categories
             WHERE store_id = :store_id
               AND (
@@ -65,7 +66,8 @@ def get_menu_editor(store_id: str, db: Session = Depends(get_db)) -> dict:
               mi.price_cents,
               mi.is_available,
               mi.sort_order,
-              mi.stock_qty
+              mi.stock_qty,
+              mi.item_params
             FROM menu_items mi
             WHERE mi.category_id IN (
               SELECT id FROM menu_categories WHERE store_id = :store_id
@@ -162,6 +164,7 @@ def get_menu_editor(store_id: str, db: Session = Depends(get_db)) -> dict:
                 "is_available": it["is_available"],
                 "sort_order": it["sort_order"],
                 "stock_qty": int(sq) if sq is not None else None,
+                "item_params": it.get("item_params") or {},
                 "modifier_groups": groups_by_item.get(str(it["id"]), []),
             }
         )
@@ -173,6 +176,7 @@ def get_menu_editor(store_id: str, db: Session = Depends(get_db)) -> dict:
                 "id": str(c["id"]),
                 "name": c["name"],
                 "sort_order": c["sort_order"],
+                "item_params_schema": c.get("item_params_schema") or [],
                 "items": items_by_category.get(str(c["id"]), []),
             }
             for c in categories
@@ -237,12 +241,13 @@ def put_menu_editor(store_id: str, payload: MenuEditorPut, db: Session = Depends
         db.execute(
             text(
                 """
-                INSERT INTO menu_categories (id, store_id, sort_order, name)
-                VALUES (:id, :store_id, :sort_order, :name)
+                INSERT INTO menu_categories (id, store_id, sort_order, name, item_params_schema)
+                VALUES (:id, :store_id, :sort_order, :name, CAST(:item_params_schema AS jsonb))
                 ON CONFLICT (id) DO UPDATE SET
                   store_id = EXCLUDED.store_id,
                   sort_order = EXCLUDED.sort_order,
-                  name = EXCLUDED.name
+                  name = EXCLUDED.name,
+                  item_params_schema = EXCLUDED.item_params_schema
                 """
             ),
             {
@@ -250,6 +255,7 @@ def put_menu_editor(store_id: str, payload: MenuEditorPut, db: Session = Depends
                 "store_id": store_id,
                 "sort_order": cat.sort_order,
                 "name": cat.name,
+                "item_params_schema": json.dumps(cat.item_params_schema or []),
             },
         )
 
@@ -273,11 +279,11 @@ def put_menu_editor(store_id: str, payload: MenuEditorPut, db: Session = Depends
                     """
                     INSERT INTO menu_items (
                       id, category_id, name, description, image_url,
-                      price_cents, is_available, sort_order, stock_qty
+                      price_cents, is_available, sort_order, stock_qty, item_params
                     )
                     VALUES (
                       :id, :category_id, :name, :description, :image_url,
-                      :price_cents, :is_available, :sort_order, :stock_qty
+                      :price_cents, :is_available, :sort_order, :stock_qty, CAST(:item_params AS jsonb)
                     )
                     ON CONFLICT (id) DO UPDATE SET
                       category_id = EXCLUDED.category_id,
@@ -287,7 +293,8 @@ def put_menu_editor(store_id: str, payload: MenuEditorPut, db: Session = Depends
                       price_cents = EXCLUDED.price_cents,
                       is_available = EXCLUDED.is_available,
                       sort_order = EXCLUDED.sort_order,
-                      stock_qty = EXCLUDED.stock_qty
+                      stock_qty = EXCLUDED.stock_qty,
+                      item_params = EXCLUDED.item_params
                     """
                 ),
                 {
@@ -300,6 +307,7 @@ def put_menu_editor(store_id: str, payload: MenuEditorPut, db: Session = Depends
                     "is_available": it.is_available,
                     "sort_order": it.sort_order,
                     "stock_qty": it.stock_qty,
+                    "item_params": json.dumps(it.item_params or {}),
                 },
             )
 

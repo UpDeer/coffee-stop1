@@ -7,6 +7,12 @@ import { useSearchParams } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { clearCart } from "@/lib/cart";
 import { getOrderStatus } from "@/lib/api";
+import {
+  getNotificationPermission,
+  notificationsSupported,
+  notifyOrderReady,
+  requestNotificationPermissionFromUser,
+} from "@/lib/notifications";
 import { formatRublesFromCents } from "@/lib/money";
 
 type ViewState =
@@ -25,6 +31,8 @@ type ViewState =
         quantity: number;
         unit_price_cents: number;
         line_total_cents: number;
+        item_params?: Record<string, unknown>;
+        item_params_display?: Array<{ key: string; label: string; value: unknown; unit?: string | null }>;
         modifiers: Array<{ name: string; price_delta_cents: number }>;
       }>;
     };
@@ -44,6 +52,7 @@ function statusText(status: string): { title: string; body: string } {
 
 export function OrderStatusClient({ slug, orderId }: { slug: string; orderId: string }) {
   const [state, setState] = useState<ViewState>({ kind: "loading" });
+  const [notifPerm, setNotifPerm] = useState<NotificationPermission | "unsupported" | null>(null);
   const prevStatusRef = useRef<string | null>(null);
   const searchParams = useSearchParams();
   const qrToken = searchParams.get("t");
@@ -88,27 +97,9 @@ export function OrderStatusClient({ slug, orderId }: { slug: string; orderId: st
           lines: s.lines,
         });
 
-        // Notify when the order becomes ready (Web Notification).
+        // Уведомление только если разрешение уже выдано (запрос — только по клику, см. блок ниже).
         if (s.status === "ready" && prev !== "ready") {
-          if (typeof window !== "undefined" && "Notification" in window) {
-            const notify = () => {
-              try {
-                new Notification("Заказ готов", {
-                  body: s.public_number ? `Номер: ${s.public_number}` : "Можно забирать на столе выдачи.",
-                });
-              } catch {
-                // ignore notification failures
-              }
-            };
-
-            if (Notification.permission === "granted") {
-              notify();
-            } else if (Notification.permission === "default") {
-              void Notification.requestPermission().then((p) => {
-                if (p === "granted") notify();
-              });
-            }
-          }
+          notifyOrderReady(s.public_number ?? null);
         }
 
         // Polling policy to reduce load:
@@ -144,6 +135,10 @@ export function OrderStatusClient({ slug, orderId }: { slug: string; orderId: st
       tickRef.current = null;
     };
   }, [orderId, slug]);
+
+  useEffect(() => {
+    setNotifPerm(getNotificationPermission());
+  }, []);
 
   useEffect(() => {
     const onFocus = () => tickRef.current?.();
@@ -194,6 +189,13 @@ export function OrderStatusClient({ slug, orderId }: { slug: string; orderId: st
                           <div className="truncate text-sm font-semibold text-zinc-900">
                             {l.quantity}x {l.name}
                           </div>
+                          {l.item_params_display?.length ? (
+                            <div className="mt-0.5 text-xs text-zinc-500">
+                              {l.item_params_display
+                                .map((p) => `${p.label}: ${String(p.value)}${p.unit ? ` ${p.unit}` : ""}`)
+                                .join(" · ")}
+                            </div>
+                          ) : null}
                           {l.modifiers.length ? (
                             <div className="mt-0.5 text-xs text-zinc-600">{l.modifiers.map((m) => m.name).join(", ")}</div>
                           ) : null}
@@ -237,6 +239,37 @@ export function OrderStatusClient({ slug, orderId }: { slug: string; orderId: st
               Обновить
             </button>
           </div>
+
+          {notifPerm !== null && notificationsSupported() ? (
+            <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+              <div className="text-sm font-semibold text-zinc-900">Уведомление, когда заказ готов</div>
+              {notifPerm === "granted" ? (
+                <div className="mt-2 text-sm text-emerald-800">Разрешено — при готовности придёт уведомление (если браузер не блокирует фон).</div>
+              ) : notifPerm === "denied" ? (
+                <div className="mt-2 text-sm text-zinc-700">
+                  Браузер запретил уведомления. Включите их в настройках сайта (значок замка в адресной строке) и обновите страницу.
+                </div>
+              ) : notifPerm === "default" ? (
+                <>
+                  <div className="mt-2 text-sm text-zinc-600">
+                    Нажмите кнопку — браузер спросит разрешение. Без него уведомление при готовности не показать.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const p = await requestNotificationPermissionFromUser();
+                      setNotifPerm(p);
+                    }}
+                    className="mt-3 inline-flex w-full items-center justify-center rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white sm:w-auto"
+                  >
+                    Разрешить уведомления
+                  </button>
+                </>
+              ) : (
+                <div className="mt-2 text-sm text-zinc-600">В этом браузере уведомления недоступны.</div>
+              )}
+            </div>
+          ) : null}
 
           <div className="mt-3 text-xs text-zinc-500">
             Редирект после оплаты не подтверждает платёж. Статус меняется после подтверждения на сервере.

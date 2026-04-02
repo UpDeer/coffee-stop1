@@ -20,6 +20,13 @@ function OrderLinesList({ lines }: { lines: BaristaOrderLine[] }) {
       {lines.map((l, idx) => (
         <li key={idx} className="leading-snug">
           <span className="tabular-nums font-medium text-zinc-700">{l.quantity}×</span> {l.name}
+          {l.item_params_display?.length ? (
+            <div className="mt-0.5 text-[11px] text-zinc-500">
+              {l.item_params_display
+                .map((p) => `${p.label}: ${String(p.value)}${p.unit ? ` ${p.unit}` : ""}`)
+                .join(" · ")}
+            </div>
+          ) : null}
         </li>
       ))}
     </ul>

@@ -57,8 +57,14 @@ def list_orders(
         db.execute(
             text(
                 """
-                SELECT ol.id, ol.order_id, ol.menu_item_name_snapshot, ol.quantity, ol.unit_price_cents, ol.line_total_cents
+                SELECT
+                  ol.id, ol.order_id, ol.menu_item_name_snapshot,
+                  ol.quantity, ol.unit_price_cents, ol.line_total_cents,
+                  ol.item_params_snapshot,
+                  mc.item_params_schema
                 FROM order_lines ol
+                JOIN menu_items mi ON mi.id = ol.menu_item_id
+                JOIN menu_categories mc ON mc.id = mi.category_id
                 WHERE ol.order_id = ANY(:oids)
                 ORDER BY ol.order_id, ol.id
                 """
@@ -69,14 +75,42 @@ def list_orders(
         .all()
     )
 
+    def _params_display(params: dict, schema: list[dict]) -> list[dict]:
+        if not params:
+            return []
+        out: list[dict] = []
+        used: set[str] = set()
+        for f in schema or []:
+            k = (f.get("key") or "").strip()
+            if not k:
+                continue
+            if k not in params:
+                continue
+            v = params.get(k)
+            if v is None or str(v).strip() == "":
+                continue
+            used.add(k)
+            out.append({"key": k, "label": (f.get("label") or k), "value": v, "unit": f.get("unit")})
+        for k, v in params.items():
+            if k in used:
+                continue
+            if v is None or str(v).strip() == "":
+                continue
+            out.append({"key": k, "label": k, "value": v, "unit": None})
+        return out
+
     lines_by_order: dict[str, list[dict]] = {}
     for l in lines:
+        params = l.get("item_params_snapshot") or {}
+        schema = l.get("item_params_schema") or []
         lines_by_order.setdefault(str(l["order_id"]), []).append(
             {
                 "name": l["menu_item_name_snapshot"],
                 "quantity": l["quantity"],
                 "unit_price_cents": l["unit_price_cents"],
                 "line_total_cents": l["line_total_cents"],
+                "item_params": params,
+                "item_params_display": _params_display(params, schema),
                 # Modifiers are not displayed in current Barista UI.
                 # Returning empty array reduces DB work significantly.
                 "modifiers": [],

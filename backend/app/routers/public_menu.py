@@ -32,7 +32,7 @@ def get_store_menu(slug: str, t: str | None = None, db: Session = Depends(get_db
     categories = db.execute(
         text(
             """
-            SELECT id, name, sort_order
+            SELECT id, name, sort_order, item_params_schema
             FROM menu_categories
             WHERE store_id = :store_id
             ORDER BY sort_order ASC, name ASC
@@ -52,7 +52,8 @@ def get_store_menu(slug: str, t: str | None = None, db: Session = Depends(get_db
               mi.image_url,
               mi.price_cents,
               mi.is_available,
-              mi.sort_order
+              mi.sort_order,
+              mi.item_params
             FROM menu_items mi
             WHERE mi.category_id IN (
               SELECT id FROM menu_categories WHERE store_id = :store_id
@@ -145,6 +146,7 @@ def get_store_menu(slug: str, t: str | None = None, db: Session = Depends(get_db
                 "image_url": it["image_url"],
                 "price_cents": it["price_cents"],
                 "is_available": it["is_available"],
+                "item_params": it.get("item_params") or {},
                 "modifier_groups": groups_by_item.get(str(it["id"]), []),
             }
         )
@@ -155,6 +157,7 @@ def get_store_menu(slug: str, t: str | None = None, db: Session = Depends(get_db
             {
                 "id": str(c["id"]),
                 "name": c["name"],
+                "item_params_schema": c.get("item_params_schema") or [],
                 "items": items_by_category.get(str(c["id"]), []),
             }
             for c in categories

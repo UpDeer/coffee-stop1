@@ -229,6 +229,21 @@ export function StoreMenuClient({ slug, menu }: { slug: string; menu: StoreMenu 
                           />
                         ) : null}
                         <div className="truncate text-base font-semibold text-zinc-900">{it.name}</div>
+                        {(() => {
+                          const schema = (cat.item_params_schema ?? []).filter((f) => f.key && f.label);
+                          if (!schema.length) return null;
+                          const params = it.item_params ?? {};
+                          const parts = schema
+                            .map((f) => {
+                              const v = (params as Record<string, unknown>)[f.key];
+                              if (v == null || String(v).trim() === "") return null;
+                              const unit = f.unit ? ` ${f.unit}` : "";
+                              return `${f.label}: ${String(v)}${unit}`;
+                            })
+                            .filter(Boolean) as string[];
+                          if (!parts.length) return null;
+                          return <div className="mt-1 text-xs text-zinc-500">{parts.join(" · ")}</div>;
+                        })()}
                         {it.description ? (
                           <div className="mt-1 line-clamp-2 text-sm text-zinc-600">{it.description}</div>
                         ) : null}

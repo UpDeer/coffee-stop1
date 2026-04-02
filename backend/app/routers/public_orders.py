@@ -17,6 +17,42 @@ from app.schemas import CheckoutOut, CreateOrderIn, OrderLineIn
 
 router = APIRouter(tags=["public"])
 
+def _params_display(params: dict, schema: list[dict]) -> list[dict]:
+    """
+    Build a stable display list [{label, value, unit?}] from snapshot params + category schema.
+    Unknown keys are appended as-is at the end.
+    """
+    if not params:
+        return []
+    out: list[dict] = []
+    used: set[str] = set()
+    for f in schema or []:
+        k = (f.get("key") or "").strip()
+        if not k:
+            continue
+        if k not in params:
+            continue
+        v = params.get(k)
+        if v is None or str(v).strip() == "":
+            continue
+        used.add(k)
+        out.append(
+            {
+                "key": k,
+                "label": (f.get("label") or k),
+                "value": v,
+                "unit": f.get("unit"),
+            }
+        )
+    # Unknown keys (still useful, but no label/unit).
+    for k, v in params.items():
+        if k in used:
+            continue
+        if v is None or str(v).strip() == "":
+            continue
+        out.append({"key": k, "label": k, "value": v, "unit": None})
+    return out
+
 
 def _uuid() -> str:
     return str(uuid.uuid4())
@@ -43,7 +79,7 @@ def _load_item_and_validate(db: Session, menu_item_id: str, store_id: str) -> di
         db.execute(
             text(
                 """
-                SELECT mi.id, mi.name, mi.price_cents, mi.is_available, mi.stock_qty
+                SELECT mi.id, mi.name, mi.price_cents, mi.is_available, mi.stock_qty, mi.item_params
                 FROM menu_items mi
                 JOIN menu_categories mc ON mc.id = mi.category_id
                 WHERE mi.id = :id AND mc.store_id = :store_id
@@ -147,8 +183,11 @@ def create_order(slug: str, payload: CreateOrderIn, db: Session = Depends(get_db
         db.execute(
             text(
                 """
-                INSERT INTO order_lines (id, order_id, menu_item_id, menu_item_name_snapshot, unit_price_cents, quantity, line_total_cents)
-                VALUES (:id, :order_id, :menu_item_id, :name, :unit, :qty, :total)
+                    INSERT INTO order_lines (
+                      id, order_id, menu_item_id, menu_item_name_snapshot,
+                      unit_price_cents, quantity, line_total_cents, item_params_snapshot
+                    )
+                    VALUES (:id, :order_id, :menu_item_id, :name, :unit, :qty, :total, CAST(:item_params_snapshot AS jsonb))
                 """
             ),
             {
@@ -159,6 +198,7 @@ def create_order(slug: str, payload: CreateOrderIn, db: Session = Depends(get_db
                 "unit": ol["unit_price_cents"],
                 "qty": ol["quantity"],
                 "total": ol["line_total_cents"],
+                    "item_params_snapshot": json.dumps(item.get("item_params") or {}),
             },
         )
 
@@ -266,8 +306,12 @@ def order_status(order_id: str, db: Session = Depends(get_db)) -> dict:
                       ol.menu_item_name_snapshot,
                       ol.quantity,
                       ol.unit_price_cents,
-                      ol.line_total_cents
+                      ol.line_total_cents,
+                      ol.item_params_snapshot,
+                      mc.item_params_schema
                     FROM order_lines ol
+                    JOIN menu_items mi ON mi.id = ol.menu_item_id
+                    JOIN menu_categories mc ON mc.id = mi.category_id
                     WHERE ol.order_id = :oid
                     ORDER BY ol.id ASC
                     """
@@ -318,6 +362,8 @@ def order_status(order_id: str, db: Session = Depends(get_db)) -> dict:
                 "quantity": l["quantity"],
                 "unit_price_cents": l["unit_price_cents"],
                 "line_total_cents": l["line_total_cents"],
+                "item_params": l.get("item_params_snapshot") or {},
+                "item_params_display": _params_display(l.get("item_params_snapshot") or {}, l.get("item_params_schema") or []),
                 "modifiers": modifiers_by_line_id.get(str(l["id"]), []),
             }
             for l in lines

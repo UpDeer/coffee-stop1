@@ -45,6 +45,8 @@ class MenuEditorItemIn(BaseModel):
     is_available: bool = True
     sort_order: int = Field(ge=0)
     stock_qty: int | None = Field(default=None, ge=0)
+    # Значения параметров позиции (по ключам из schema категории), напр. {"volume_ml": 300}
+    item_params: dict = Field(default_factory=dict)
     modifier_groups: list[MenuEditorModifierGroupIn] = Field(default_factory=list)
 
 
@@ -52,6 +54,8 @@ class MenuEditorCategoryIn(BaseModel):
     id: str
     name: str
     sort_order: int = Field(ge=0)
+    # Схема параметров позиций в категории (список полей, формат на фронте).
+    item_params_schema: list[dict] = Field(default_factory=list)
     items: list[MenuEditorItemIn] = Field(default_factory=list)
 
 

@@ -10,6 +10,8 @@ export type BaristaOrderLine = {
   quantity: number;
   unit_price_cents: number;
   line_total_cents: number;
+  item_params?: Record<string, unknown>;
+  item_params_display?: Array<{ key: string; label: string; value: unknown; unit?: string | null }>;
   modifiers: Array<{ name: string; price_delta_cents: number }>;
 };
 

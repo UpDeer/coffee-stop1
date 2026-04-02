@@ -33,7 +33,10 @@ CREATE TABLE menu_categories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   store_id UUID NOT NULL REFERENCES stores (id) ON DELETE CASCADE,
   sort_order INT NOT NULL DEFAULT 0,
-  name TEXT NOT NULL
+  name TEXT NOT NULL,
+  -- Схема параметров позиций этой категории (например, "Объём (мл)" для напитков).
+  -- Формат: JSON array.
+  item_params_schema JSONB NOT NULL DEFAULT '[]'::jsonb
 );
 
 CREATE TABLE menu_items (
@@ -46,7 +49,9 @@ CREATE TABLE menu_items (
   is_available BOOLEAN NOT NULL DEFAULT true,
   sort_order INT NOT NULL DEFAULT 0,
   -- NULL = без лимита; 0 = нет в наличии (для гостя скрыто вместе с is_available)
-  stock_qty INT CHECK (stock_qty IS NULL OR stock_qty >= 0)
+  stock_qty INT CHECK (stock_qty IS NULL OR stock_qty >= 0),
+  -- Значения параметров (по ключу) для этой позиции, напр. {"volume_ml": 300}
+  item_params JSONB NOT NULL DEFAULT '{}'::jsonb
 );
 
 CREATE TABLE modifier_groups (
@@ -95,7 +100,9 @@ CREATE TABLE order_lines (
   menu_item_name_snapshot TEXT NOT NULL,
   unit_price_cents INT NOT NULL CHECK (unit_price_cents >= 0),
   quantity INT NOT NULL CHECK (quantity >= 1),
-  line_total_cents INT NOT NULL CHECK (line_total_cents >= 0)
+  line_total_cents INT NOT NULL CHECK (line_total_cents >= 0),
+  -- Снимок параметров позиции на момент заказа (чтобы не зависеть от будущих правок меню)
+  item_params_snapshot JSONB NOT NULL DEFAULT '{}'::jsonb
 );
 
 CREATE TABLE order_line_modifiers (

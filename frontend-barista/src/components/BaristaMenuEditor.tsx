@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { getMenuEditor, putMenuEditor } from "@/lib/api";
 import { normalizeExternalImageUrl } from "@/lib/imageUrl";
 import type {
+  ItemParamField,
   MenuEditorCategory,
   MenuEditorItem,
   MenuEditorModifierGroup,
@@ -40,12 +41,22 @@ function emptyItem(): MenuEditorItem {
     is_available: true,
     sort_order: 0,
     stock_qty: null,
+    item_params: {},
     modifier_groups: [],
   };
 }
 
 function emptyCategory(): MenuEditorCategory {
-  return { id: newId(), name: "Новая категория", sort_order: 0, items: [] };
+  return { id: newId(), name: "Новая категория", sort_order: 0, item_params_schema: [], items: [] };
+}
+
+function normalizeParamKey(raw: string): string {
+  return raw
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/[^a-z0-9_]/g, "")
+    .replace(/^_+|_+$/g, "");
 }
 
 function rublesFromCents(cents: number): string {
@@ -206,6 +217,132 @@ export function BaristaMenuEditor({ storeId }: { storeId: string | null }) {
                   }}
                 />
               </label>
+              <details className="w-full rounded-xl border border-zinc-200 bg-white p-3">
+                <summary className="cursor-pointer select-none text-sm font-semibold text-zinc-900">
+                  Параметры позиций (например, объём)
+                </summary>
+                <div className="mt-3 space-y-3">
+                  {(cat.item_params_schema ?? []).length ? (
+                    <div className="space-y-2">
+                      {(cat.item_params_schema ?? []).map((f: ItemParamField, fi: number) => (
+                        <div key={`${cat.id}:${fi}`} className="grid grid-cols-1 gap-2 sm:grid-cols-12">
+                          <label className="sm:col-span-4 flex flex-col gap-1">
+                            <span className="text-xs text-zinc-500">Название</span>
+                            <input
+                              className="rounded-xl border border-zinc-200 px-3 py-2 text-sm"
+                              value={f.label ?? ""}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setCategories((prev) =>
+                                  prev.map((c, i) =>
+                                    i === ci
+                                      ? {
+                                          ...c,
+                                          item_params_schema: (c.item_params_schema ?? []).map((x, j) =>
+                                            j === fi ? { ...x, label: v } : x
+                                          ),
+                                        }
+                                      : c
+                                  )
+                                );
+                              }}
+                            />
+                          </label>
+                          <label className="sm:col-span-4 flex flex-col gap-1">
+                            <span className="text-xs text-zinc-500">Ключ (латиница)</span>
+                            <input
+                              className="rounded-xl border border-zinc-200 px-3 py-2 text-sm"
+                              value={f.key ?? ""}
+                              placeholder="volume_ml"
+                              onChange={(e) => {
+                                const v = normalizeParamKey(e.target.value);
+                                setCategories((prev) =>
+                                  prev.map((c, i) =>
+                                    i === ci
+                                      ? {
+                                          ...c,
+                                          item_params_schema: (c.item_params_schema ?? []).map((x, j) =>
+                                            j === fi ? { ...x, key: v } : x
+                                          ),
+                                        }
+                                      : c
+                                  )
+                                );
+                              }}
+                            />
+                          </label>
+                          <label className="sm:col-span-3 flex flex-col gap-1">
+                            <span className="text-xs text-zinc-500">Ед.</span>
+                            <input
+                              className="rounded-xl border border-zinc-200 px-3 py-2 text-sm"
+                              value={f.unit ?? ""}
+                              placeholder="мл"
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setCategories((prev) =>
+                                  prev.map((c, i) =>
+                                    i === ci
+                                      ? {
+                                          ...c,
+                                          item_params_schema: (c.item_params_schema ?? []).map((x, j) =>
+                                            j === fi ? { ...x, unit: v || null } : x
+                                          ),
+                                        }
+                                      : c
+                                  )
+                                );
+                              }}
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            className="sm:col-span-1 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+                            onClick={() => {
+                              setCategories((prev) =>
+                                prev.map((c, i) =>
+                                  i === ci
+                                    ? {
+                                        ...c,
+                                        item_params_schema: (c.item_params_schema ?? []).filter((_, j) => j !== fi),
+                                      }
+                                    : c
+                                )
+                              );
+                            }}
+                            title="Удалить параметр"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-zinc-600">Параметров пока нет.</div>
+                  )}
+
+                  <button
+                    type="button"
+                    className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-900"
+                    onClick={() => {
+                      setCategories((prev) =>
+                        prev.map((c, i) =>
+                          i === ci
+                            ? {
+                                ...c,
+                                item_params_schema: [
+                                  ...(c.item_params_schema ?? []),
+                                  { key: "", label: "Объём", unit: "мл", type: "number" },
+                                ],
+                              }
+                            : c
+                        )
+                      );
+                    }}
+                  >
+                    + Добавить параметр
+                  </button>
+                </div>
+              </details>
               <button
                 type="button"
                 className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
@@ -280,6 +417,53 @@ export function BaristaMenuEditor({ storeId }: { storeId: string | null }) {
                         }}
                       />
                     </label>
+                    {(cat.item_params_schema ?? []).length ? (
+                      <div className="sm:col-span-2 rounded-xl border border-zinc-200 bg-white p-3">
+                        <div className="text-xs font-semibold text-zinc-700">Параметры</div>
+                        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                          {(cat.item_params_schema ?? []).map((f: ItemParamField, fi: number) => {
+                            const key = f.key?.trim();
+                            if (!key) return null;
+                            const raw = (it.item_params ?? {})[key];
+                            const value = raw == null ? "" : String(raw);
+                            const label = `${f.label ?? key}${f.unit ? ` (${f.unit})` : ""}`;
+                            const isNumber = (f.type ?? "number") === "number";
+                            return (
+                              <label key={`${it.id}:${fi}`} className="flex flex-col gap-1">
+                                <span className="text-xs text-zinc-500">{label}</span>
+                                <input
+                                  type={isNumber ? "number" : "text"}
+                                  inputMode={isNumber ? "numeric" : undefined}
+                                  className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm"
+                                  value={value}
+                                  onChange={(e) => {
+                                    const v = e.target.value;
+                                    setCategories((prev) =>
+                                      prev.map((c, i) =>
+                                        i === ci
+                                          ? {
+                                              ...c,
+                                              items: c.items.map((x, j) => {
+                                                if (j !== ii) return x;
+                                                const nextParams: Record<string, unknown> = {
+                                                  ...(x.item_params ?? {}),
+                                                };
+                                                if (v.trim() === "") delete nextParams[key];
+                                                else nextParams[key] = isNumber ? Number(v) : v;
+                                                return { ...x, item_params: nextParams };
+                                              }),
+                                            }
+                                          : c
+                                      )
+                                    );
+                                  }}
+                                />
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : null}
                     <label className="flex flex-col gap-1 sm:col-span-2">
                       <span className="text-xs text-zinc-500">Описание</span>
                       <input

@@ -25,12 +25,19 @@ export type MenuItem = {
   image_url: string | null;
   price_cents: number;
   is_available: boolean;
+  item_params?: Record<string, unknown>;
   modifier_groups: ModifierGroup[];
 };
 
 export type MenuCategory = {
   id: string;
   name: string;
+  item_params_schema?: Array<{
+    key: string;
+    label: string;
+    unit?: string | null;
+    type?: "number" | "text";
+  }>;
   items: MenuItem[];
 };
 
@@ -78,6 +85,8 @@ export type OrderStatusOut = {
     quantity: number;
     unit_price_cents: number;
     line_total_cents: number;
+    item_params?: Record<string, unknown>;
+    item_params_display?: Array<{ key: string; label: string; value: unknown; unit?: string | null }>;
     modifiers: Array<{
       name: string;
       price_delta_cents: number;
