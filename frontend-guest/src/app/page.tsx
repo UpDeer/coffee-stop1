@@ -7,7 +7,7 @@ export default function Home() {
         <header className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">Coffee Stop</h1>
           <p className="text-sm text-zinc-600">
-            Быстрое меню и заказ кофе с самовывозом: выбери позиции, оплати и забери.
+            Быстрое меню и заказ кофе с самовывозом: выбери позиции, оплати и забери свой заказ.
           </p>
         </header>
 
