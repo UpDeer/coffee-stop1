@@ -194,7 +194,7 @@ export function OrderStatusClient({ slug, orderId }: { slug: string; orderId: st
                             {l.quantity}x {l.name}
                           </div>
                           {l.item_params_display?.length ? (
-                            <div className="mt-0.5 text-xs text-zinc-500">
+                            <div className="mt-0.5 text-xs text-zinc-600">
                               {l.item_params_display
                                 .map((p) => `${p.label}: ${String(p.value)}${p.unit ? ` ${p.unit}` : ""}`)
                                 .join(" · ")}

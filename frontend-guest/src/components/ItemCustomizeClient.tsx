@@ -102,11 +102,15 @@ export function ItemCustomizeClient({
                     return (
                       <label
                         key={o.id}
-                        className={`flex cursor-pointer items-center justify-between gap-3 rounded-xl border px-3 py-2 text-sm ${
+                        className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-sm ${
                           checked ? "border-zinc-900 bg-zinc-50" : "border-zinc-200 bg-white"
-                        } ${disabled ? "opacity-80" : ""}`}
+                        } ${
+                          disabled
+                            ? "cursor-not-allowed border-zinc-200 bg-zinc-50 text-zinc-600"
+                            : "cursor-pointer text-zinc-900"
+                        }`}
                       >
-                        <span className="min-w-0 truncate">
+                        <span className="min-w-0 truncate font-medium">
                           {o.name}
                           {o.price_delta_cents ? (
                             <span className="ml-2 text-xs text-zinc-600">

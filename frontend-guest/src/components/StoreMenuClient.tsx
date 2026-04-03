@@ -246,7 +246,7 @@ export function StoreMenuClient({ slug, menu }: { slug: string; menu: StoreMenu 
                             })
                             .filter(Boolean) as string[];
                           if (!parts.length) return null;
-                          return <div className="mt-1 text-xs text-zinc-500">{parts.join(" · ")}</div>;
+                          return <div className="mt-1 text-xs text-zinc-600">{parts.join(" · ")}</div>;
                         })()}
                         {it.description ? (
                           <div className="mt-1 line-clamp-2 text-sm text-zinc-600">{it.description}</div>
