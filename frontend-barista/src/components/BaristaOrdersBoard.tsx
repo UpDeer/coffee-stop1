@@ -2,6 +2,7 @@
 
 import type { Dispatch, SetStateAction } from "react";
 
+import { formatOrderLineSummary } from "@/lib/formatOrderLine";
 import type { BaristaOrder, BaristaOrderLine } from "@/lib/types";
 
 function formatRublesFromCents(amountCents: number) {
@@ -16,20 +17,10 @@ function formatRublesFromCents(amountCents: number) {
 function OrderLinesList({ lines }: { lines: BaristaOrderLine[] }) {
   if (!lines.length) return null;
   return (
-    <ul className="mt-2 list-none space-y-1 pl-0 text-xs text-zinc-600">
+    <ul className="mt-2 list-none space-y-2 pl-0 text-xs text-zinc-800">
       {lines.map((l, idx) => (
-        <li key={idx} className="leading-snug">
-          <span className="tabular-nums font-medium text-zinc-700">{l.quantity}×</span> {l.name}
-          {l.item_params_display?.length ? (
-            <div className="mt-0.5 text-[11px] text-zinc-500">
-              {l.item_params_display
-                .map((p) => `${p.label}: ${String(p.value)}${p.unit ? ` ${p.unit}` : ""}`)
-                .join(" · ")}
-            </div>
-          ) : null}
-          {l.modifiers?.length ? (
-            <div className="mt-0.5 text-[11px] text-zinc-600">{l.modifiers.map((m) => m.name).join(", ")}</div>
-          ) : null}
+        <li key={idx} className="leading-snug break-words">
+          {formatOrderLineSummary(l)}
         </li>
       ))}
     </ul>

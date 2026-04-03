@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { formatRublesFromCents } from "@/lib/money";
 import { addLine } from "@/lib/cart";
+import { formatRublesFromCents } from "@/lib/money";
+import { useBodyScrollLock } from "@/lib/useBodyScrollLock";
 import type { MenuItem, ModifierGroup } from "@/lib/types";
 
 function minRequiredCount(groups: ModifierGroup[]): number {
@@ -36,22 +37,7 @@ export function ItemCustomizeModal({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
 
-  // Prevent background scroll while modal is open.
-  useEffect(() => {
-    const prevOverflow = document.body.style.overflow;
-    const prevPaddingRight = document.body.style.paddingRight;
-    const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
-
-    document.body.style.overflow = "hidden";
-    if (scrollBarWidth > 0) {
-      document.body.style.paddingRight = `${scrollBarWidth}px`;
-    }
-
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      document.body.style.paddingRight = prevPaddingRight;
-    };
-  }, []);
+  useBodyScrollLock(true);
 
   const selectedByGroup = useMemo(() => {
     const map = new Map<string, Set<string>>();
@@ -86,17 +72,17 @@ export function ItemCustomizeModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 p-3 sm:items-center"
-      onMouseDown={(e) => {
-        // close only when clicking the backdrop
+      className="fixed inset-0 z-50 flex min-h-[100dvh] w-full flex-col justify-end overscroll-none bg-black/30 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:items-center sm:justify-center sm:pb-4 sm:pt-4"
+      onPointerDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-lg rounded-2xl bg-white p-4 shadow-xl"
+        className="flex max-h-[min(88dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1.5rem))] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
       >
+        <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-y-contain p-4 [-webkit-overflow-scrolling:touch]">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="text-lg font-semibold text-zinc-900">{item.name}</div>
@@ -231,6 +217,7 @@ export function ItemCustomizeModal({
               </button>
             </div>
           </div>
+        </div>
         </div>
       </div>
     </div>

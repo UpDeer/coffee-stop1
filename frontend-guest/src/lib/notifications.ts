@@ -5,6 +5,8 @@
  * - Safari iOS: ограничения; часто только в установленной PWA на домашний экран.
  */
 
+import { formatOrderLineSummary, type LineForFormat } from "@/lib/formatOrderLine";
+
 export function notificationsSupported(): boolean {
   return typeof window !== "undefined" && "Notification" in window;
 }
@@ -24,15 +26,12 @@ export async function requestNotificationPermissionFromUser(): Promise<Notificat
   }
 }
 
-type OrderLineForNotification = {
-  name: string;
-  quantity: number;
-  modifiers: Array<{ name: string; price_delta_cents: number }>;
+type OrderLineForNotification = LineForFormat & {
+  modifiers?: Array<{ name: string; price_delta_cents?: number }> | null;
 };
 
 function formatReadyLine(line: OrderLineForNotification): string {
-  const mods = line.modifiers?.length ? ` (${line.modifiers.map((m) => m.name).join(", ")})` : "";
-  return `${line.quantity}× ${line.name}${mods}`;
+  return formatOrderLineSummary(line);
 }
 
 export function notifyOrderReady(publicNumber: number | null, lines: OrderLineForNotification[]): void {

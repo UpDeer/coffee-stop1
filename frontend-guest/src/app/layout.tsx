@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import "./globals.css";
 
@@ -7,6 +7,12 @@ import GuestFooter from "@/components/GuestFooter";
 export const metadata: Metadata = {
   title: "Coffee Stop — Guest",
   description: "Guest UI: menu → cart → payment → order status",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

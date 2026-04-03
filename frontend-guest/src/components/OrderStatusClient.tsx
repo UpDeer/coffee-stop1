@@ -13,6 +13,7 @@ import {
   notifyOrderReady,
   requestNotificationPermissionFromUser,
 } from "@/lib/notifications";
+import { formatOrderLineSummary } from "@/lib/formatOrderLine";
 import { formatRublesFromCents } from "@/lib/money";
 
 type ViewState =
@@ -165,7 +166,6 @@ export function OrderStatusClient({ slug, orderId }: { slug: string; orderId: st
 
   const publicNumber = state.kind === "ok" ? state.publicNumber : null;
   const lines = state.kind === "ok" ? state.lines : [];
-  const estimatedWaitMinutes = state.kind === "ok" ? state.estimatedWaitMinutes : null;
 
   return (
     <div className="min-h-screen bg-zinc-50">
@@ -188,41 +188,18 @@ export function OrderStatusClient({ slug, orderId }: { slug: string; orderId: st
                 <div className="mt-2 flex flex-col gap-2">
                   {lines.length ? (
                     lines.map((l) => (
-                      <div key={l.id} className="flex items-start justify-between gap-4">
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-semibold text-zinc-900">
-                            {l.quantity}x {l.name}
-                          </div>
-                          {l.item_params_display?.length ? (
-                            <div className="mt-0.5 text-xs text-zinc-600">
-                              {l.item_params_display
-                                .map((p) => `${p.label}: ${String(p.value)}${p.unit ? ` ${p.unit}` : ""}`)
-                                .join(" · ")}
-                            </div>
-                          ) : null}
-                          {l.modifiers.length ? (
-                            <div className="mt-0.5 text-xs text-zinc-600">{l.modifiers.map((m) => m.name).join(", ")}</div>
-                          ) : null}
+                      <div key={l.id} className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1 text-sm font-medium leading-snug text-zinc-900">
+                          {formatOrderLineSummary(l)}
                         </div>
-                        <div className="shrink-0 text-sm font-semibold text-zinc-900">{formatRublesFromCents(l.line_total_cents)}</div>
+                        <div className="shrink-0 text-sm font-semibold tabular-nums text-zinc-900">
+                          {formatRublesFromCents(l.line_total_cents)}
+                        </div>
                       </div>
                     ))
                   ) : (
                     <div className="text-sm text-zinc-600">Состав недоступен.</div>
                   )}
-                </div>
-
-                <div className="mt-3 text-xs text-zinc-500">
-                  Время ожидания:{" "}
-                  {state.status === "payment_pending"
-                    ? "Обычно подтверждение занимает несколько секунд."
-                    : state.status === "paid"
-                      ? state.estimatedWaitMinutes
-                        ? `Примерно готов через ${estimatedWaitMinutes} минут.`
-                        : "Обычно готовность через 5–8 минут."
-                      : state.status === "ready"
-                        ? "Готово — можно забирать."
-                        : "Обновляйте страницу через минуту."}
                 </div>
               </div>
             ) : null}
