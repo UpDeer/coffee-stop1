@@ -13,7 +13,7 @@ import {
   notifyOrderReady,
   requestNotificationPermissionFromUser,
 } from "@/lib/notifications";
-import { formatOrderLineSummary } from "@/lib/formatOrderLine";
+import { formatOrderLineSummary, groupOrderLines } from "@/lib/formatOrderLine";
 import { formatRublesFromCents } from "@/lib/money";
 
 type ViewState =
@@ -49,6 +49,112 @@ function statusText(status: string): { title: string; body: string } {
     default:
       return { title: `Статус: ${status}`, body: "Обновите страницу через минуту." };
   }
+}
+
+function CoffeeStatusAnimation({ status }: { status: string }) {
+  const ready = status === "ready";
+  const cooking = status === "paid";
+
+  if (!ready && !cooking) return null;
+
+  return (
+    <div className="mt-4 flex justify-center">
+      <div
+        aria-hidden="true"
+        className={`relative h-28 w-28 rounded-3xl border bg-white shadow-sm ${
+          ready ? "border-emerald-200" : "border-zinc-200"
+        }`}
+      >
+        <svg viewBox="0 0 128 128" className="h-full w-full">
+          <ellipse cx="64" cy="102" rx="40" ry="10" fill={ready ? "#D1FAE5" : "#F4F4F5"} />
+
+          <path
+            d="M40 54c0-6 5-11 11-11h26c6 0 11 5 11 11v30c0 8-7 15-15 15H55c-8 0-15-7-15-15V54z"
+            fill={ready ? "#ECFDF5" : "#FFFFFF"}
+            stroke={ready ? "#34D399" : "#A1A1AA"}
+            strokeWidth="3"
+          />
+          <path
+            d="M88 60h8c8 0 14 6 14 14s-6 14-14 14h-8"
+            fill="none"
+            stroke={ready ? "#34D399" : "#A1A1AA"}
+            strokeWidth="3"
+            strokeLinecap="round"
+          />
+
+          <path
+            d="M47 58c2-5 7-8 12-8h10c5 0 10 3 12 8"
+            fill="none"
+            stroke={ready ? "#10B981" : "#27272A"}
+            strokeWidth="4"
+            strokeLinecap="round"
+            opacity={ready ? 0.35 : 0.25}
+          />
+
+          {cooking ? (
+            <>
+              <path className="cs-steam cs-steam-1" d="M54 40c-6-8 6-10 0-18" />
+              <path className="cs-steam cs-steam-2" d="M72 40c-6-8 6-10 0-18" />
+              <path className="cs-steam cs-steam-3" d="M63 38c-6-8 6-10 0-18" />
+            </>
+          ) : null}
+
+          {ready ? (
+            <path
+              d="M50 82l10 10 20-22"
+              fill="none"
+              stroke="#10B981"
+              strokeWidth="6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          ) : null}
+        </svg>
+
+        <style jsx>{`
+          .cs-steam {
+            fill: none;
+            stroke: #a1a1aa;
+            stroke-width: 4;
+            stroke-linecap: round;
+            opacity: 0.75;
+          }
+          .cs-steam-1 {
+            animation: csSteam 1.8s ease-in-out infinite;
+          }
+          .cs-steam-2 {
+            animation: csSteam 2.1s ease-in-out infinite;
+            animation-delay: 0.15s;
+          }
+          .cs-steam-3 {
+            animation: csSteam 1.95s ease-in-out infinite;
+            animation-delay: 0.3s;
+          }
+          @keyframes csSteam {
+            0% {
+              transform: translateY(8px);
+              opacity: 0;
+            }
+            30% {
+              opacity: 0.8;
+            }
+            100% {
+              transform: translateY(-10px);
+              opacity: 0;
+            }
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .cs-steam-1,
+            .cs-steam-2,
+            .cs-steam-3 {
+              animation: none;
+              opacity: 0.35;
+            }
+          }
+        `}</style>
+      </div>
+    </div>
+  );
 }
 
 export function OrderStatusClient({ slug, orderId }: { slug: string; orderId: string }) {
@@ -165,7 +271,7 @@ export function OrderStatusClient({ slug, orderId }: { slug: string; orderId: st
   }, [state]);
 
   const publicNumber = state.kind === "ok" ? state.publicNumber : null;
-  const lines = state.kind === "ok" ? state.lines : [];
+  const lines = state.kind === "ok" ? groupOrderLines(state.lines) : [];
 
   return (
     <div className="min-h-screen bg-zinc-50">
@@ -175,6 +281,7 @@ export function OrderStatusClient({ slug, orderId }: { slug: string; orderId: st
         <div className="rounded-2xl border border-zinc-200 bg-white p-5">
           <div className="text-sm font-semibold text-zinc-900">{content.title}</div>
           {content.body ? <div className="mt-2 text-sm text-zinc-600">{content.body}</div> : null}
+          {state.kind === "ok" ? <CoffeeStatusAnimation status={state.status} /> : null}
 
           <div className="mt-5 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
             <div className="text-xs text-zinc-500 text-center">Номер заказа</div>
@@ -188,7 +295,7 @@ export function OrderStatusClient({ slug, orderId }: { slug: string; orderId: st
                 <div className="mt-2 flex flex-col gap-2">
                   {lines.length ? (
                     lines.map((l) => (
-                      <div key={l.id} className="flex items-start justify-between gap-3">
+                      <div key={l._signature} className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1 text-sm font-medium leading-snug text-zinc-900">
                           {formatOrderLineSummary(l)}
                         </div>

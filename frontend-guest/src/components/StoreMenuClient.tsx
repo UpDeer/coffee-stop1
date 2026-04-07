@@ -29,6 +29,7 @@ export function StoreMenuClient({ slug, menu }: { slug: string; menu: StoreMenu 
   const [activeItem, setActiveItem] = useState<MenuItem | null>(null);
   const cart = useCart(slug);
   const emailOk = useMemo(() => isValidEmail(cart.guestEmail), [cart.guestEmail]);
+  const cartCount = useMemo(() => cart.lines.reduce((s, l) => s + (l.quantity ?? 0), 0), [cart.lines]);
   const [toast, setToast] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -209,7 +210,7 @@ export function StoreMenuClient({ slug, menu }: { slug: string; menu: StoreMenu 
         ) : null}
       </AppHeader>
 
-      <main className="mx-auto max-w-xl px-4 py-6">
+      <main className={`mx-auto max-w-xl px-4 py-6 ${cartCount > 0 ? "pb-24" : ""}`}>
         <div className="flex flex-col gap-7">
           {visibleCategories.length === 0 && categoriesForFilter.length > 0 && filterActive ? (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
@@ -353,6 +354,24 @@ export function StoreMenuClient({ slug, menu }: { slug: string; menu: StoreMenu 
           ))}
         </div>
       </main>
+
+      {cartCount > 0 ? (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white/90 backdrop-blur">
+          <div className="mx-auto flex max-w-xl items-center justify-between gap-3 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <div className="text-sm font-medium text-zinc-900">
+              В корзине: <span className="tabular-nums font-semibold">{cartCount}</span>
+            </div>
+            <Link
+              href={withQr(`/s/${encodeURIComponent(slug)}/cart`)}
+              className={`inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold ${
+                emailOk ? "bg-zinc-900 text-white" : "bg-zinc-900 text-white"
+              }`}
+            >
+              Перейти в корзину
+            </Link>
+          </div>
+        </div>
+      ) : null}
 
       {activeItem ? (
         <ItemCustomizeModal

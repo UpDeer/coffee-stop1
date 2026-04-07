@@ -6,6 +6,7 @@
  */
 
 import { formatOrderLineSummary, type LineForFormat } from "@/lib/formatOrderLine";
+import { groupOrderLines } from "@/lib/formatOrderLine";
 
 export function notificationsSupported(): boolean {
   return typeof window !== "undefined" && "Notification" in window;
@@ -37,9 +38,8 @@ function formatReadyLine(line: OrderLineForNotification): string {
 export function notifyOrderReady(publicNumber: number | null, lines: OrderLineForNotification[]): void {
   if (!notificationsSupported() || Notification.permission !== "granted") return;
   try {
-    const preview = lines?.length
-      ? lines.slice(0, 3).map(formatReadyLine).join("; ")
-      : "";
+    const grouped = lines?.length ? groupOrderLines(lines) : [];
+    const preview = grouped.length ? grouped.slice(0, 3).map(formatReadyLine).join("; ") : "";
 
     new Notification("Заказ готов", {
       body:

@@ -43,6 +43,41 @@ function uniqSegments(segments: string[]): string[] {
   return out;
 }
 
+function lineSignature(line: Omit<LineForFormat, "quantity">): string {
+  const params = uniqSegments((line.item_params_display ?? []).map((p) => formatParamSegment(p)).filter(Boolean));
+  const mods = uniqSegments((line.modifiers ?? []).map((m) => (m.name || "").trim()).filter(Boolean));
+  return JSON.stringify({ n: line.name.trim(), p: params, m: mods });
+}
+
+export type GroupedLine<T extends LineForFormat> = T & { _signature: string };
+
+/** Group identical lines by name + params + modifier names. Preserves extra fields from T. */
+export function groupOrderLines<T extends LineForFormat>(lines: T[]): Array<GroupedLine<T>> {
+  const bySig = new Map<string, GroupedLine<T>>();
+  const order: string[] = [];
+
+  for (const l of lines) {
+    const sig = lineSignature({
+      name: l.name,
+      item_params_display: l.item_params_display ?? null,
+      modifiers: l.modifiers ?? null,
+    });
+
+    const prev = bySig.get(sig);
+    if (prev) {
+      prev.quantity += l.quantity;
+      if (typeof (prev as any).line_total_cents === "number" && typeof (l as any).line_total_cents === "number") {
+        (prev as any).line_total_cents += (l as any).line_total_cents;
+      }
+    } else {
+      bySig.set(sig, { ...(l as any), _signature: sig });
+      order.push(sig);
+    }
+  }
+
+  return order.map((sig) => bySig.get(sig)!).filter(Boolean);
+}
+
 /**
  * Одна строка: «2× Капучино, 300 мл, коровье, сироп» — параметры и модификаторы через запятую.
  */

@@ -2,7 +2,7 @@
 
 import type { Dispatch, SetStateAction } from "react";
 
-import { formatOrderLineSummary } from "@/lib/formatOrderLine";
+import { formatOrderLineSummary, groupOrderLines } from "@/lib/formatOrderLine";
 import type { BaristaOrder, BaristaOrderLine } from "@/lib/types";
 
 function formatRublesFromCents(amountCents: number) {
@@ -16,10 +16,11 @@ function formatRublesFromCents(amountCents: number) {
 
 function OrderLinesList({ lines }: { lines: BaristaOrderLine[] }) {
   if (!lines.length) return null;
+  const grouped = groupOrderLines(lines);
   return (
     <ul className="mt-2 list-none space-y-2 pl-0 text-xs text-zinc-800">
-      {lines.map((l, idx) => (
-        <li key={idx} className="leading-snug break-words">
+      {grouped.map((l) => (
+        <li key={l._signature} className="leading-snug break-words">
           {formatOrderLineSummary(l)}
         </li>
       ))}
